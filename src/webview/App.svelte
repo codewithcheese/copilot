@@ -1,7 +1,7 @@
 <script lang="ts">
   import './app.css';
 
-  let count = 0;
+  let count = $state(0);
   function increment() {
     count += 1;
   }
@@ -11,7 +11,7 @@
 
 <main>
     <h1>Codewithcheese</h1>
-    <button on:click={increment}>
+    <button onclick={increment}>
         Clicks: {count}
     </button>
 </main>

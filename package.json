@@ -1,14 +1,32 @@
 {
-  "name": "copilot",  
+  "name": "copilot",
   "version": "1.0.0",
   "description": "",
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codewithcheese",
+          "title": "Codewithcheese",
+          "icon": "cheese.svg"
+        }
+      ]
+    },
+    "views": {
+      "codewithcheese": [
+        {
+          "type": "webview",
+          "id": "codewithcheese",
+          "name": "Codewithcheese"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "esbuild-sample.hello-esbuild",
-        "title": "Hello esbuild"
+        "command": "codewithcheese.new-chat",
+        "title": "Codewithcheese: Open"
       }
     ]
   },

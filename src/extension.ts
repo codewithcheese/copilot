@@ -27,7 +27,9 @@ class SidebarProvider implements vscode.WebviewViewProvider {
   ) {
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this._extensionUri]
+      localResourceRoots: [
+        this._extensionUri
+      ]
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
@@ -43,25 +45,20 @@ class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'main.js'));
+    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'main.css'));
+
     return `<!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Sidebar Webview</title>
+                <link href="${styleUri}" rel="stylesheet">
+                <title>Codewithcheese</title>
             </head>
             <body>
-                <h1>Hello from the sidebar!</h1>
-                <button id="helloButton">Say Hello</button>
-                <script>
-                    const vscode = acquireVsCodeApi();
-                    document.getElementById('helloButton').addEventListener('click', () => {
-                        vscode.postMessage({
-                            command: 'alert',
-                            text: 'Hello from the webview!'
-                        });
-                    });
-                </script>
+                <div id="app"></div>
+                <script src="${scriptUri}"></script>
             </body>
             </html>`;
   }

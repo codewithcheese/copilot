@@ -1,0 +1,32 @@
+{
+  "name": "copilot",  
+  "version": "1.0.0",
+  "description": "",
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "esbuild-sample.hello-esbuild",
+        "title": "Hello esbuild"
+      }
+    ]
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node esbuild.mjs",
+    "watch:esbuild": "node esbuild.mjs --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/vscode": "^1.73.0",
+    "esbuild": "^0.21.5",
+    "esbuild-plugin-copy": "^2.1.1",
+    "typescript": "^5.5.2"
+  }
+}

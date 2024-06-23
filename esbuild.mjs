@@ -1,7 +1,9 @@
-import esbuild from "esbuild";
-import esbuildSvelte from "esbuild-svelte";
-import sveltePreprocess from "svelte-preprocess";
-import { copy } from "esbuild-plugin-copy";
+import * as esbuild from 'esbuild';
+import esbuildSvelte from 'esbuild-svelte';
+import {sveltePreprocess} from 'svelte-preprocess';
+import stylePlugin from 'esbuild-style-plugin';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -13,7 +15,7 @@ const esbuildProblemMatcherPlugin = {
             console.log('[watch] build started');
         });
         build.onEnd((result) => {
-            result.errors.forEach(({ text, location }) => {
+            result.errors.forEach(({text, location}) => {
                 console.error(`✘ [ERROR] ${text}`);
                 console.error(`    ${location.file}:${location.line}:${location.column}:`);
             });
@@ -48,15 +50,26 @@ async function buildExtension() {
 async function buildWebview() {
     const ctx = await esbuild.context({
         entryPoints: ['src/webview/main.ts'],
-        mainFields: ["svelte", "browser", "module", "main"],
-        conditions: ["svelte", "browser"],
         bundle: true,
-        outdir: "./dist/webview",
+        format: 'iife',
+        minify: production,
+        sourcemap: !production,
+        outdir: 'dist/webview',
         plugins: [
             esbuildSvelte({
                 preprocess: sveltePreprocess(),
             }),
-            esbuildProblemMatcherPlugin
+            stylePlugin({
+                postcss: {
+                    plugins: [tailwindcss, autoprefixer],
+                },
+            }),
+            // copy({
+            //     assets: {
+            //         from: ['public/*'],
+            //         to: ['dist/webview'],
+            //     },
+            // }),
         ],
     });
 

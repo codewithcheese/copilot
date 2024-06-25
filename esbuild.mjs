@@ -49,7 +49,10 @@ async function buildExtension() {
 
 async function buildWebview() {
     const ctx = await esbuild.context({
-        entryPoints: ['src/ui/main.ts'],
+        entryPoints: [
+            'src/ui/sidebar/index.ts',
+            'src/ui/renderer/index.ts',
+        ],
         bundle: true,
         format: 'iife',
         minify: production,

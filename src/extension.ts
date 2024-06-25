@@ -50,10 +50,22 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebview(webview: vscode.Webview) {
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "dist", "ui", "main.js")
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "dist",
+        "ui",
+        "sidebar",
+        "index.js"
+      )
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "dist", "ui", "main.css")
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "dist",
+        "ui",
+        "sidebar",
+        "index.css"
+      )
     );
 
     return `<!DOCTYPE html>

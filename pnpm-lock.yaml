@@ -17,6 +17,9 @@ dependencies:
   esbuild-svelte:
     specifier: ^0.8.1
     version: 0.8.1(esbuild@0.21.5)(svelte@5.0.0-next.164)
+  lucide-svelte:
+    specifier: ^0.396.0
+    version: 0.396.0(svelte@5.0.0-next.164)
   svelte:
     specifier: 5.0.0-next.164
     version: 5.0.0-next.164
@@ -906,6 +909,14 @@ packages:
   /lru-cache@10.2.2:
     resolution: {integrity: sha512-9hp3Vp2/hFQUiIwKo8XCeFVnrg8Pk3TYNPIR7tJADKi5YfcF7vEaK7avFHTlSy3kOKYaJQaalfEo6YuXdceBOQ==}
     engines: {node: 14 || >=16.14}
+
+  /lucide-svelte@0.396.0(svelte@5.0.0-next.164):
+    resolution: {integrity: sha512-0oU3ZwQYzlFB1VyXcCRn1/cTsA+J7d+6MTC9t8lyIz12l0Rcrnoq0LUrGjX1I3r14uwSGrNDUTkdRdrHsl8L1Q==}
+    peerDependencies:
+      svelte: ^3 || ^4 || ^5.0.0-next.42
+    dependencies:
+      svelte: 5.0.0-next.164
+    dev: false
 
   /magic-string@0.30.10:
     resolution: {integrity: sha512-iIRwTIf0QKV3UAnYK4PU8uiEc4SRh5jX0mwpIwETPpHdhVM4f53RSwS/vXvN1JhGX+Cs7B8qIq3d6AH49O5fAQ==}

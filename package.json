@@ -25,8 +25,12 @@
     },
     "commands": [
       {
-        "command": "codewithcheese.new-chat",
+        "command": "codewithcheese.openSidebar",
         "title": "Codewithcheese: Open"
+      },
+      {
+        "command": "codewithcheese.openChatPanel",
+        "title": "Codewithcheese: New Chat"
       }
     ]
   },
@@ -55,6 +59,7 @@
     "clsx": "^2.1.1",
     "esbuild-style-plugin": "^1.6.3",
     "esbuild-svelte": "^0.8.1",
+    "lucide-svelte": "^0.396.0",
     "svelte": "5.0.0-next.164",
     "svelte-preprocess": "^6.0.1",
     "tailwind-merge": "^2.3.0",

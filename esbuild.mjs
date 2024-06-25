@@ -70,7 +70,7 @@ async function buildUI() {
     const ctx = await esbuild.context({
         entryPoints: [
             'src/ui/sidebar/index.ts',
-            'src/ui/renderer/index.ts',
+            'src/ui/chat/index.ts',
         ],
         bundle: true,
         format: 'iife',

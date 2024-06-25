@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 class SidebarProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "codewithcheese";
+  public static readonly viewType = "codewithcheese.sidebar";
 
   constructor(private readonly _extensionUri: vscode.Uri) {}
 

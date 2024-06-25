@@ -8,17 +8,17 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "codewithcheese",
+          "id": "codewithcheese-sidebar",
           "title": "Codewithcheese",
           "icon": "cheese.svg"
         }
       ]
     },
     "views": {
-      "codewithcheese": [
+      "codewithcheese-sidebar": [
         {
           "type": "webview",
-          "id": "codewithcheese",
+          "id": "codewithcheese.sidebar",
           "name": "Codewithcheese"
         }
       ]

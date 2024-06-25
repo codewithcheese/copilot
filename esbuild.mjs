@@ -49,12 +49,12 @@ async function buildExtension() {
 
 async function buildWebview() {
     const ctx = await esbuild.context({
-        entryPoints: ['src/webview/main.ts'],
+        entryPoints: ['src/ui/main.ts'],
         bundle: true,
         format: 'iife',
         minify: production,
         sourcemap: !production,
-        outdir: 'dist/webview',
+        outdir: 'dist/ui',
         plugins: [
             esbuildSvelte({
                 preprocess: sveltePreprocess(),

@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
-import sqlite3 from "@vscode/sqlite3";
 import * as path from "node:path";
-import { initializeDatabase } from "./db";
+import { connectDatabase } from "./db";
 import { handlePostMessageRequest } from "./trpc/handler";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -10,12 +9,16 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Initialize SQLite database
   const dbPath = path.join(context.extensionPath, "codewithcheese.db");
-  const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-      outputChannel.appendLine(`Error opening database: ${err.message}`);
-    } else {
-      outputChannel.appendLine("Connected to the SQLite database.");
-      initializeDatabase(db, outputChannel);
+  const dataSource = connectDatabase(context.extensionUri);
+
+  dataSource.initialize().then(() => {
+    try {
+      outputChannel.appendLine("Database initialized successfully.");
+    } catch (error) {
+      outputChannel.appendLine(
+        // @ts-ignore
+        `Error initializing database: ${error?.message ?? "Unknown error"}`
+      );
     }
   });
 

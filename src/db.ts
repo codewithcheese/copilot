@@ -1,42 +1,66 @@
-import sqlite3 from "@vscode/sqlite3";
+import "reflect-metadata";
+import {
+  DataSource,
+  Repository,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+} from "typeorm";
 import * as vscode from "vscode";
+import * as sqlite3 from "@vscode/sqlite3";
 
-export function initializeDatabase(
-  db: sqlite3.Database,
-  outputChannel: vscode.OutputChannel
-) {
-  db.run(
-    `
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `,
-    (err) => {
-      if (err) {
-        outputChannel.appendLine(`Error creating table: ${err.message}`);
-      } else {
-        outputChannel.appendLine("Messages table created or already exists.");
-      }
-    }
-  );
+@Entity()
+export class Message {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  content: string;
+
+  @Column({ type: "datetime", default: () => "CURRENT_TIMESTAMP" })
+  timestamp: Date;
 }
 
-export function addMessageToDatabase(
-  db: sqlite3.Database,
+export function connectDatabase(extensionUri: vscode.Uri) {
+  const dbPath = vscode.Uri.joinPath(extensionUri, "codewithcheese.db").fsPath;
+
+  dataSource = new DataSource({
+    type: "sqlite",
+    database: dbPath,
+    entities: [Message],
+    synchronize: true,
+    logging: true,
+    driver: sqlite3,
+  });
+
+  return dataSource;
+}
+
+let dataSource: DataSource;
+let messageRepository: Repository<Message>;
+
+export async function addMessageToDatabase(
   message: string,
   outputChannel: vscode.OutputChannel
 ) {
-  db.run(
-    "INSERT INTO messages (content) VALUES (?)",
-    [message],
-    function (err) {
-      if (err) {
-        outputChannel.appendLine(`Error inserting message: ${err.message}`);
-      } else {
-        outputChannel.appendLine(`Message added with ID: ${this.lastID}`);
-      }
-    }
-  );
+  if (!messageRepository) {
+    outputChannel.appendLine("Error: Database not initialized.");
+    return;
+  }
+
+  try {
+    const newMessage = messageRepository.create({ content: message });
+    const result = await messageRepository.save(newMessage);
+    outputChannel.appendLine(`Message added with ID: ${result.id}`);
+  } catch (error) {
+    // @ts-ignore
+    outputChannel.appendLine(`Error inserting message: ${error.message}`);
+  }
+}
+
+// Optional: Function to close the database connection
+export async function closeDatabase() {
+  if (dataSource && dataSource.isInitialized) {
+    await dataSource.destroy();
+  }
 }

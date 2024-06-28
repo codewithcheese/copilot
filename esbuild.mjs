@@ -5,7 +5,8 @@ import stylePlugin from 'esbuild-style-plugin';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import * as path from "node:path";
-import { fileURLToPath } from 'url';
+import * as fs from 'node:fs';
+import {fileURLToPath} from 'url';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -35,9 +36,9 @@ const aliasPlugin = (aliases) => ({
     name: 'alias',
     setup(build) {
         Object.entries(aliases).forEach(([alias, aliasPath]) => {
-            build.onResolve({ filter: new RegExp(`^${alias}`) }, args => {
+            build.onResolve({filter: new RegExp(`^${alias}`)}, args => {
                 const resolvedPath = path.join(aliasPath, args.path.slice(alias.length));
-                return { path: resolvedPath };
+                return {path: resolvedPath};
             });
         });
     }
@@ -55,7 +56,27 @@ async function buildExtension() {
         outfile: 'dist/extension.js',
         external: ['vscode', '@vscode/sqlite3'],
         logLevel: 'silent',
-        plugins: [esbuildProblemMatcherPlugin],
+        plugins: [esbuildProblemMatcherPlugin, {
+            name: 'typeorm-decorator-metadata',
+            setup(build) {
+                build.onLoad({filter: /\.ts$/}, async (args) => {
+                    const ts = await import('typescript');
+                    const source = await fs.promises.readFile(args.path, 'utf8');
+                    const result = ts.transpileModule(source, {
+                        compilerOptions: {
+                            target: ts.ScriptTarget.ES2020,
+                            module: ts.ModuleKind.CommonJS,
+                            experimentalDecorators: true,
+                            emitDecoratorMetadata: true,
+                        },
+                    });
+                    return {
+                        contents: result.outputText,
+                        loader: 'js',
+                    };
+                });
+            },
+        }],
     });
 
     if (watch) {

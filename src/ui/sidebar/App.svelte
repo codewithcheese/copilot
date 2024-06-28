@@ -1,20 +1,25 @@
 <script lang="ts">
   import "../app.css";
   import { Button } from "$ui/components/ui/button";
-  import { onMount } from "svelte";
-  import { PlusIcon } from "lucide-svelte";
+  import { HandIcon, MessageSquareWarningIcon, PlusIcon } from "lucide-svelte";
+  import { trpc } from "../../trpc/client";
 
-  let vscode: any;
+  async function openChatPanel() {
+    await trpc.openChatPanel.mutate();
+  }
 
-  onMount(() => {
-    vscode = acquireVsCodeApi();
-  });
+  async function greet() {
+    console.log("Sending greeting");
+    const res = await trpc.greeting.query({ name: "Tom" });
+    console.log("greet", res);
+  }
 
-  function openChatPanel() {
-    console.log("openChatPanel");
-    vscode.postMessage({
-      command: "openChatPanel",
-    });
+  async function tryError() {
+    try {
+      await trpc.tryError.mutate();
+    } catch (err) {
+      console.log("Received error", err);
+    }
   }
 </script>
 
@@ -26,5 +31,19 @@
     variant="ghost"
   >
     <PlusIcon class="w-5 h-5" />
+  </Button>
+  <Button
+    class="rounded-3xl p-1 h-10 w-10 hover:bg-white"
+    onclick={greet}
+    variant="ghost"
+  >
+    <HandIcon class="w-5 h-5" />
+  </Button>
+  <Button
+    class="rounded-3xl p-1 h-10 w-10 hover:bg-white"
+    onclick={tryError}
+    variant="ghost"
+  >
+    <MessageSquareWarningIcon class="w-5 h-5" />
   </Button>
 </div>

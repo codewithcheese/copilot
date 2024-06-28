@@ -55,6 +55,8 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
+    "@trpc/client": "^10.45.2",
+    "@trpc/server": "^10.45.2",
     "@vscode/sqlite3": "5.1.6-vscode",
     "bits-ui": "^0.21.10",
     "clsx": "^2.1.1",

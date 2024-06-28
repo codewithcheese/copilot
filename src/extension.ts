@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import sqlite3 from "@vscode/sqlite3";
 import * as path from "node:path";
 import { initializeDatabase } from "./db";
+import { handlePostMessageRequest } from "./trpc/handler";
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("Codewithcheese");
@@ -76,18 +77,27 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     // Handle messages from the webview
-    webviewView.webview.onDidReceiveMessage((message) => {
+    webviewView.webview.onDidReceiveMessage(async (message) => {
       this.outputChannel.appendLine(
         `Received message from webview: ${JSON.stringify(message)}`
       );
-      switch (message.command) {
-        case "alert":
-          vscode.window.showInformationMessage(message.text);
-          return;
-        case "openChatPanel":
-          vscode.commands.executeCommand("codewithcheese.openChatPanel");
-          return;
-      }
+
+      await handlePostMessageRequest(message, { vscode }, (response): void => {
+        webviewView.webview.postMessage(response);
+      });
+
+      // if (isTRPCRequestMessage(message)) {
+      //
+      // } else {
+      //   switch (message.command) {
+      //     case "alert":
+      //       vscode.window.showInformationMessage(message.text);
+      //       return;
+      //     case "openChatPanel":
+      //       vscode.commands.executeCommand("codewithcheese.openChatPanel");
+      //       return;
+      //   }
+      // }
     });
   }
 

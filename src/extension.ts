@@ -1,8 +1,23 @@
 import * as vscode from "vscode";
+import sqlite3 from "@vscode/sqlite3";
+import * as path from "node:path";
+import { initializeDatabase } from "./db";
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("Codewithcheese");
   outputChannel.appendLine("Codewithcheese activated!");
+
+  // Initialize SQLite database
+  const dbPath = path.join(context.extensionPath, "codewithcheese.db");
+  const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      outputChannel.appendLine(`Error opening database: ${err.message}`);
+    } else {
+      outputChannel.appendLine("Connected to the SQLite database.");
+      initializeDatabase(db, outputChannel);
+    }
+  });
+
   const provider = new SidebarProvider(context.extensionUri, outputChannel);
 
   context.subscriptions.push(
@@ -37,29 +52,6 @@ export function activate(context: vscode.ExtensionContext) {
       );
     })
   );
-
-  // Set up file watcher
-  // const webviewPath = path.join(context.extensionPath, "dist", "ui", "sidebar");
-  // const watcher = vscode.workspace.createFileSystemWatcher(
-  //   new vscode.RelativePattern(webviewPath, "**/*")
-  // );
-  //
-  // watcher.onDidChange((uri) => {
-  //   outputChannel.appendLine(`File changed: ${uri.fsPath}`);
-  //   provider.reload();
-  // });
-  //
-  // watcher.onDidCreate((uri) => {
-  //   outputChannel.appendLine(`File created: ${uri.fsPath}`);
-  //   provider.reload();
-  // });
-  //
-  // watcher.onDidDelete((uri) => {
-  //   outputChannel.appendLine(`File deleted: ${uri.fsPath}`);
-  //   provider.reload();
-  // });
-  //
-  // context.subscriptions.push(watcher);
 }
 
 class SidebarProvider implements vscode.WebviewViewProvider {

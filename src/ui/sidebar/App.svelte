@@ -19,7 +19,7 @@
 </script>
 
 <div class="flex flex-row">
-  <div class="flex-1" />
+  <div class="flex-1">&nbsp;</div>
   <Button
     class="rounded-3xl p-1 h-10 w-10 hover:bg-white"
     onclick={openChatPanel}

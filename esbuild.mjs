@@ -53,7 +53,7 @@ async function buildExtension() {
         sourcesContent: false,
         platform: 'node',
         outfile: 'dist/extension.js',
-        external: ['vscode'],
+        external: ['vscode', '@vscode/sqlite3'],
         logLevel: 'silent',
         plugins: [esbuildProblemMatcherPlugin],
     });

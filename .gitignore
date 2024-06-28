@@ -18,3 +18,6 @@ dist/
 
 # VScode History Extension
 .history
+
+# SQLite Database
+codewithcheese.db

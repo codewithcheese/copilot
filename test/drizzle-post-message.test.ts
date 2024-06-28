@@ -1,54 +1,139 @@
-import { beforeEach, describe, expect, type Mock, test, vi } from "vitest";
+import {
+  beforeEach,
+  afterEach,
+  describe,
+  expect,
+  type Mock,
+  test,
+  vi,
+} from "vitest";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { eq, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import sqlite3 from "@vscode/sqlite3";
 
 // Declare the global vscode interface
 declare global {
   var vscode: {
-    postMessage: (message: any) => Thenable<any>;
+    postMessage: (message: any) => Promise<any>;
   };
 }
 
-// Mock the vscode module
-vi.mock("vscode", () => ({
-  window: {
-    createWebviewPanel: vi.fn(),
-  },
-  ViewColumn: {
-    One: 1,
-    Two: 2,
-    Three: 3,
-  },
-}));
-
 describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
   let mockPostMessage: Mock;
+  let db: sqlite3.Database;
+
+  const users = sqliteTable("users", {
+    id: text("id").primaryKey(),
+    name: text("name"),
+    balance: integer("balance"),
+  });
 
   beforeEach(() => {
-    // Reset mocks
-    vi.resetAllMocks();
+    return new Promise((resolve, reject) => {
+      // Reset mocks
+      vi.resetAllMocks();
 
-    // Create a mock postMessage function
-    mockPostMessage = vi.fn();
+      // Create an in-memory SQLite database
+      db = new sqlite3.Database(":memory:", (err) => {
+        if (err) {
+          console.error(err.message);
+        }
+        // Create the users table
+        db.run(
+          `
+        CREATE TABLE users (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          balance INTEGER
+        )
+      `,
+          (err) => {
+            if (err) {
+              console.error(err.message);
+              reject(err);
+            } else {
+              resolve();
+            }
+          }
+        );
+      });
 
-    // Mock the global vscode object that would be available in the webview
-    globalThis.vscode = {
-      postMessage: mockPostMessage,
-    };
+      // Create a mock postMessage function that interacts with the SQLite database
+      mockPostMessage = vi.fn(async (message: any) => {
+        return new Promise((resolve, reject) => {
+          if (message.command === "executeQuery") {
+            const { sql, params, method } = message;
+
+            if (method === "run") {
+              db.run(sql, params, function (err) {
+                if (err) reject(err);
+                else resolve({ lastID: this.lastID, changes: this.changes });
+              });
+            } else if (method === "get") {
+              db.get(sql, params, (err, row: any) => {
+                if (err) reject(err);
+                else resolve({ rows: Object.values(row) });
+              });
+            } else if (method === "all") {
+              db.all(sql, params, (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+              });
+            }
+          } else if (message.command === "executeBatchQueries") {
+            db.serialize(() => {
+              const results: any[] = [];
+              message.queries.forEach((query: any) => {
+                const { sql, params, method } = query;
+                if (method === "run") {
+                  db.run(sql, params, function (err) {
+                    if (err) reject(err);
+                    results.push({
+                      lastID: this.lastID,
+                      changes: this.changes,
+                    });
+                  });
+                } else if (method === "get") {
+                  db.get(sql, params, (err, row) => {
+                    if (err) reject(err);
+                    results.push(row);
+                  });
+                } else if (method === "all") {
+                  db.all(sql, params, (err, rows: any[]) => {
+                    if (err) reject(err);
+                    results.push({
+                      rows: rows.map((row) => Object.values(row)),
+                    });
+                  });
+                }
+              });
+              resolve(results);
+            });
+          }
+        });
+      });
+
+      // Mock the global vscode object
+      globalThis.vscode = {
+        postMessage: mockPostMessage,
+      };
+    });
+  });
+
+  afterEach(() => {
+    // Close the database connection after each test
+    db.close((err) => {
+      if (err) {
+        console.error(err.message);
+      }
+    });
   });
 
   test("Drizzle proxy executes a query using postMessage", async () => {
-    // Define a sample table
-    const users = sqliteTable("users", {
-      id: text("id"),
-      name: text("name"),
-    });
-
     // Create the db instance
-    const db = drizzle(
+    const drizzleDb = drizzle(
       async (sql, params, method) => {
-        // Simulate sending a message to the extension host
         return vscode.postMessage({
           command: "executeQuery",
           sql,
@@ -59,13 +144,20 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
       { schema: { users } }
     );
 
-    // Simulate the extension host's response
-    mockPostMessage.mockResolvedValueOnce({
-      rows: ["1", "Test User"],
+    // Insert a test user
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        "INSERT INTO users (id, name, balance) VALUES (?, ?, ?)",
+        ["1", "Test User", 100],
+        (err) => {
+          if (err) reject(err);
+          resolve();
+        }
+      );
     });
 
-    // Execute a query
-    const result = await db.query.users.findFirst({
+    // Execute a query using drizzle
+    const result = await drizzleDb.query.users.findFirst({
       where: eq(users.id, "1"),
     });
 
@@ -78,18 +170,12 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
     });
 
     // Check if the result is correct
-    expect(result).toEqual({ id: "1", name: "Test User" });
+    expect(result).toEqual({ id: "1", name: "Test User", balance: 100 });
   });
 
   test("Drizzle proxy handles batch queries", async () => {
-    // Define a sample table
-    const users = sqliteTable("users", {
-      id: text("id"),
-      name: text("name"),
-    });
-
     // Create the db instance
-    const db = drizzle(
+    const drizzleDb = drizzle(
       async (sql, params, method) => {
         return vscode.postMessage({
           command: "executeQuery",
@@ -103,25 +189,26 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
           command: "executeBatchQueries",
           queries,
         });
-      }
+      },
+      { schema: { users } }
     );
 
-    // Simulate the extension host's response for batch queries
-    mockPostMessage.mockResolvedValueOnce([
-      { rows: [["1", "User 1"]] },
-      { rows: [["2", "User 2"]] },
-    ]);
+    // Insert test users
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        "INSERT INTO users (id, name, balance) VALUES (?, ?, ?), (?, ?, ?)",
+        ["1", "User 1", 100, "2", "User 2", 200],
+        (err) => {
+          if (err) reject(err);
+          resolve();
+        }
+      );
+    });
 
     // Execute batch queries
-    const results = await db.batch([
-      db
-        .select()
-        .from(users)
-        .where(sql`id = ${"1"}`),
-      db
-        .select()
-        .from(users)
-        .where(sql`id = ${"2"}`),
+    const results = await drizzleDb.batch([
+      drizzleDb.select().from(users).where(eq(users.id, "1")),
+      drizzleDb.select().from(users).where(eq(users.id, "2")),
     ]);
 
     // Check if postMessage was called with the correct arguments
@@ -132,19 +219,14 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
 
     // Check if the results are correct
     expect(results).toEqual([
-      [{ id: "1", name: "User 1" }],
-      [{ id: "2", name: "User 2" }],
+      [{ id: "1", name: "User 1", balance: 100 }],
+      [{ id: "2", name: "User 2", balance: 200 }],
     ]);
   });
 
   test("Drizzle proxy executes a transaction", async () => {
-    const users = sqliteTable("users", {
-      id: text("id").primaryKey(),
-      name: text("name"),
-      balance: integer("balance"),
-    });
-
-    const db = drizzle(
+    // Create the db instance
+    const drizzleDb = drizzle(
       async (sql, params, method) => {
         return vscode.postMessage({
           command: "executeQuery",
@@ -153,21 +235,23 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
           method,
         });
       },
-      {
-        schema: { users },
-      }
+      { schema: { users } }
     );
 
-    // Simulate the extension host's responses
-    mockPostMessage
-      .mockResolvedValueOnce({ rows: [] }) // BEGIN TRANSACTION
-      .mockResolvedValueOnce({ rows: ["1", "Alice", 100] }) // SELECT
-      .mockResolvedValueOnce({ rows: [] }) // UPDATE
-      .mockResolvedValueOnce({ rows: [] }) // UPDATE
-      .mockResolvedValueOnce({ rows: [] }); // COMMIT
+    // Insert initial data
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        "INSERT INTO users (id, name, balance) VALUES (?, ?, ?), (?, ?, ?)",
+        ["1", "Alice", 100, "2", "Bob", 50],
+        (err) => {
+          if (err) reject(err);
+          resolve();
+        }
+      );
+    });
 
     // Execute a transaction
-    const result = await db.transaction(async (tx) => {
+    const result = await drizzleDb.transaction(async (tx) => {
       const user = await tx.query.users.findFirst({
         where: eq(users.id, "1"),
       });
@@ -186,54 +270,26 @@ describe("Drizzle SQLite Proxy in VSCode Webview Test", () => {
     });
 
     // Check if postMessage was called for each query in the transaction
-    expect(mockPostMessage).toHaveBeenCalledTimes(5);
-    expect(mockPostMessage).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        command: "executeQuery",
-        method: "run",
-        params: [],
-        sql: "begin",
-      })
-    );
-    expect(mockPostMessage).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        command: "executeQuery",
-        method: "get",
-        params: ["1", 1],
-        sql: expect.stringContaining("select"),
-      })
-    );
-    expect(mockPostMessage).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        command: "executeQuery",
-        method: "run",
-        params: ["1"],
-        sql: expect.stringContaining("update"),
-      })
-    );
-    expect(mockPostMessage).toHaveBeenNthCalledWith(
-      4,
-      expect.objectContaining({
-        command: "executeQuery",
-        method: "run",
-        params: ["2"],
-        sql: expect.stringContaining("update"),
-      })
-    );
-    expect(mockPostMessage).toHaveBeenNthCalledWith(
-      5,
-      expect.objectContaining({
-        command: "executeQuery",
-        method: "run",
-        params: [],
-        sql: "commit",
-      })
-    );
+    expect(mockPostMessage).toHaveBeenCalledTimes(5); // BEGIN, SELECT, UPDATE, UPDATE, COMMIT
 
     // Check if the transaction was successful
     expect(result).toBe(true);
+
+    // Verify the balances after the transaction
+    const alice = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM users WHERE id = ?", ["1"], (err, row) => {
+        if (err) reject(err);
+        resolve(row);
+      });
+    });
+    const bob = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM users WHERE id = ?", ["2"], (err, row) => {
+        if (err) reject(err);
+        resolve(row);
+      });
+    });
+
+    expect(alice.balance).toBe(50);
+    expect(bob.balance).toBe(100);
   });
 });

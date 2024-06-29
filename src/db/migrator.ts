@@ -1,17 +1,24 @@
 import { sql } from "drizzle-orm/sql";
-import journal from "./migrations/meta/_journal.json";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type { SQLite3Database } from "./node-sqlite3/driver";
+import * as path from "node:path";
 
-export async function runMigrations(db: BetterSQLite3Database) {
-  const haveMigrationsTable = db.get(
+const journal = require("./migrations/meta/_journal.json");
+
+console.log("Journal", journal);
+
+export async function runMigrations(db: SQLite3Database) {
+  const haveMigrationsTable = await db.get(
     sql.raw(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations';"
     )
   );
   if (!haveMigrationsTable) {
-    db.run(
+    console.log("Creating migrations table");
+    await db.run(
       sql.raw("CREATE TABLE `migrations` (`name` text PRIMARY KEY NOT NULL);")
     );
+  } else {
+    console.log("Migrations table exists");
   }
   for (const entry of journal.entries) {
     await applyMigration(db, entry.idx, entry.tag);
@@ -19,7 +26,7 @@ export async function runMigrations(db: BetterSQLite3Database) {
 }
 
 async function applyMigration(
-  db: BetterSQLite3Database,
+  db: SQLite3Database,
   idx: number,
   migration: string
 ) {
@@ -30,11 +37,14 @@ async function applyMigration(
   console.log("hasMigration", hasMigration);
   if (!hasMigration) {
     await db.transaction(async (tx) => {
-      const migrationSql = (await import(`./migrations/${migration}.sql?raw`))
-        .default;
+      const migrationsDir = path.join(__dirname, "db", "migrations");
+      console.log("Migrations dir", migrationsDir);
+      const migrationSql = require(path.join(migrationsDir, `${migration}.js`));
       console.log("Applying migration", migration);
-      tx.run(sql.raw(migrationSql));
-      tx.run(sql.raw(`INSERT INTO migrations (name) VALUES ('${migration}');`));
+      await tx.run(sql.raw(migrationSql));
+      await tx.run(
+        sql.raw(`INSERT INTO migrations (name) VALUES ('${migration}');`)
+      );
     });
   }
 }

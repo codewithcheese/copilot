@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { connectDatabase } from "./db";
 import { handlePostMessageRequest } from "./trpc/handler";
+import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { initDb, runMigrations } from "./db";
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("Codewithcheese");
@@ -9,20 +10,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Initialize SQLite database
   const dbPath = path.join(context.extensionPath, "codewithcheese.db");
-  const dataSource = connectDatabase(context.extensionUri);
-
-  dataSource.initialize().then(() => {
-    try {
-      outputChannel.appendLine("Database initialized successfully.");
-    } catch (error) {
-      outputChannel.appendLine(
-        // @ts-ignore
-        `Error initializing database: ${error?.message ?? "Unknown error"}`
-      );
-    }
+  const db = initDb(dbPath);
+  runMigrations(db).catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.appendLine(`Error running migrations: ${message}`);
   });
 
-  const provider = new SidebarProvider(context.extensionUri, outputChannel);
+  const provider = new SidebarProvider(context.extensionUri, outputChannel, db);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -64,7 +58,8 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly outputChannel: vscode.OutputChannel,
+    private readonly db: BetterSQLite3Database
   ) {}
 
   public resolveWebviewView(

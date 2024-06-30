@@ -38,7 +38,7 @@
     "vscode": "^1.74.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:unit": "vitest --testTimeout=1000",
     "build": "node esbuild.mjs",
     "watch:esbuild": "node esbuild.mjs --watch"
   },

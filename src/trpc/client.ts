@@ -1,49 +1,101 @@
-import { createTRPCProxyClient, type TRPCLink } from "@trpc/client";
-import { observable } from "@trpc/server/observable";
+import { createTRPCProxyClient, createWSClient, wsLink } from "@trpc/client";
 import type { AppRouter } from "./shared";
-import type { TRPCResponseMessage } from "@trpc/server/rpc";
+import { BaseSocketPonyFill } from "./common.js";
 
-const vscode = acquireVsCodeApi();
+export class VSCodeSocketPonyFill extends BaseSocketPonyFill {
+  private vscode: any;
+  private listeners: { [key: string]: ((event: any) => void)[] } = {};
 
-const postMessageLink: TRPCLink<AppRouter> = () => {
-  return ({ op }) => {
-    return observable((observer) => {
-      const id = Math.random().toString(36).substring(2);
-      const messageHandler = (event: MessageEvent<TRPCResponseMessage>) => {
-        const message = event.data;
-        if (message.id === id) {
-          window.removeEventListener("message", messageHandler);
-          if ("result" in message) {
-            observer.next({ result: { data: message.result } });
-            observer.complete();
-          } else {
-            console.log("postMessageLink received error", message);
-            // @ts-expect-error incomplete error handling
-            observer.error(new Error(message.error.message));
-          }
-        }
-      };
+  constructor() {
+    super();
+    this.vscode = acquireVsCodeApi();
+    window.addEventListener("message", this.handleMessage);
+    // Simulate the WebSocket opening
+    queueMicrotask(() => this.emit("open", new Event("open")));
+  }
 
-      console.log("postMessageLink sending message", op);
-
-      window.addEventListener("message", messageHandler);
-      vscode.postMessage({
-        type: "trpc.request",
-        id,
-        path: op.path,
-        input: op.input,
-      });
-      return () => {
-        window.removeEventListener("message", messageHandler);
-      };
-    });
+  private handleMessage = (event: MessageEvent) => {
+    const message = event.data;
+    if (message.type === "message") {
+      this.emit("message", message);
+    } else if (message.type === "error") {
+      this.emit("error", new Error(message));
+    } else if (message.type === "close") {
+      this.emit("close", message);
+    }
   };
-};
 
-function createTRPCClient() {
-  return createTRPCProxyClient<AppRouter>({
-    links: [postMessageLink],
+  addEventListener(event: string, listener: EventListener): void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener as any);
+  }
+
+  removeEventListener(event: string, listener: EventListener): void {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(
+        (l) => l !== listener
+      );
+    }
+  }
+
+  on(
+    event: "message" | "error",
+    listener: (message: string | Error) => void
+  ): this {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+    return this;
+  }
+
+  once(event: "close", listener: (code: number) => void): this {
+    const onceListener = (code: number) => {
+      listener(code);
+      // filter out the listener
+      if (this.listeners[event]) {
+        this.listeners[event] = this.listeners[event].filter(
+          (listener) => listener !== onceListener
+        );
+      }
+    };
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(onceListener);
+    return this;
+  }
+
+  private emit(event: string, data?: any) {
+    const callbacks = this.listeners[event] || [];
+    callbacks.forEach((callback) => callback(data));
+  }
+
+  send(data: string): void {
+    this.vscode.postMessage({ type: "message", data });
+  }
+
+  close(): void {
+    this.vscode.postMessage({ type: "close" });
+    window.removeEventListener("message", this.handleMessage);
+  }
+}
+
+export function createVSCodeClient(): ReturnType<typeof createWSClient> {
+  return createWSClient({
+    url: "vscode" as unknown as string, // Dummy URL, not actually used
+    WebSocket: VSCodeSocketPonyFill as unknown as typeof WebSocket,
   });
 }
 
-export const trpc = createTRPCClient();
+export function createTrpcClient() {
+  return createTRPCProxyClient<AppRouter>({
+    links: [
+      wsLink({
+        client: createVSCodeClient(),
+      }),
+    ],
+  });
+}

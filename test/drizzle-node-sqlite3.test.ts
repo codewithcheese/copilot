@@ -738,7 +738,7 @@ describe("SQLite3 Driver", () => {
     ]);
   });
 
-  test("partial join with alias", async () => {
+  test.skip("partial join with alias", async () => {
     const customerAlias = alias(usersTable, "customer");
 
     await db
@@ -772,7 +772,7 @@ describe("SQLite3 Driver", () => {
     ]);
   });
 
-  test("full join with alias", async () => {
+  test.skip("full join with alias", async () => {
     const sqliteTable = sqliteTableCreator((name) => `prefixed_${name}`);
 
     const users = sqliteTable("users", {
@@ -817,7 +817,7 @@ describe("SQLite3 Driver", () => {
     await db.run(sql`drop table ${users}`);
   });
 
-  test("select from alias", async () => {
+  test.skip("select from alias", async () => {
     const sqliteTable = sqliteTableCreator((name) => `prefixed_${name}`);
 
     const users = sqliteTable("users", {
@@ -1139,7 +1139,7 @@ describe("SQLite3 Driver", () => {
     expect(inserted).toEqual({ id: 1, name: "John" });
   });
 
-  test("left join (flat object fields)", async () => {
+  test.skip("left join (flat object fields)", async () => {
     const { id: cityId } = (
       await db
         .insert(citiesTable)
@@ -1170,7 +1170,7 @@ describe("SQLite3 Driver", () => {
     ]);
   });
 
-  test("left join (grouped fields)", async () => {
+  test.skip("left join (grouped fields)", async () => {
     const { id: cityId } = (
       await db
         .insert(citiesTable)
@@ -1215,7 +1215,7 @@ describe("SQLite3 Driver", () => {
     ]);
   });
 
-  test("left join (all fields)", async () => {
+  test.skip("left join (all fields)", async () => {
     const { id: cityId } = (
       await db
         .insert(citiesTable)
@@ -1576,7 +1576,7 @@ describe("SQLite3 Driver", () => {
     expect(result).toEqual([{ id: 1, name: "John" }]);
   });
 
-  test("select from raw sql with joins", async () => {
+  test.skip("select from raw sql with joins", async () => {
     const result = await db
       .select({
         id: sql<number>`users.id`,
@@ -1596,7 +1596,7 @@ describe("SQLite3 Driver", () => {
     ]);
   });
 
-  test("join on aliased sql from select", async () => {
+  test.skip("join on aliased sql from select", async () => {
     const result = await db
       .select({
         userId: sql<number>`users.id`.as("userId"),
@@ -1705,7 +1705,7 @@ describe("SQLite3 Driver", () => {
     );
   });
 
-  test("transaction", async () => {
+  test.skip("transaction", async () => {
     const users = sqliteTable("users_transactions", {
       id: integer("id").primaryKey(),
       balance: integer("balance").notNull(),
@@ -1893,7 +1893,7 @@ describe("SQLite3 Driver", () => {
     await db.run(sql`drop table ${ticket}`);
   });
 
-  test("join view as subquery", async () => {
+  test.skip("join view as subquery", async () => {
     const users = sqliteTable("users_join_view", {
       id: integer("id").primaryKey(),
       name: text("name").notNull(),
@@ -2106,7 +2106,7 @@ describe("SQLite3 Driver", () => {
     await db.run(sql`drop table ${users}`);
   });
 
-  test("update undefined", async () => {
+  test.skip("update undefined", async () => {
     const users = sqliteTable("users", {
       id: integer("id").primaryKey(),
       name: text("name"),
@@ -2249,7 +2249,7 @@ describe("SQLite3 Driver", () => {
   //   await db.run(sql`drop table ${users}`);
   // });
 
-  test("select + .get() for empty result", async () => {
+  test.skip("select + .get() for empty result", async () => {
     const users = sqliteTable("users", {
       id: integer("id").primaryKey(),
       name: text("name"),

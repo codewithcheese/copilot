@@ -1,5 +1,5 @@
 import { initTRPC } from "@trpc/server";
-import * as vscode from "vscode";
+import type * as vscode from "vscode";
 
 export type Context = { vscode: typeof vscode };
 

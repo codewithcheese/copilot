@@ -3,6 +3,9 @@ import * as path from "node:path";
 import { handlePostMessageRequest } from "./trpc/handler";
 import { initDb, runMigrations } from "./db";
 import type { SQLite3Database } from "./db/node-sqlite3/driver";
+import { applyWSSHandler } from "@trpc/server/adapters/ws";
+import { appRouter } from "./trpc/router";
+import { createVSCodeServer } from "./trpc/vscode";
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("Codewithcheese");
@@ -74,6 +77,12 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+    applyWSSHandler({
+      router: appRouter,
+      createContext: () => ({ vscode }),
+      wss: createVSCodeServer(webviewView.webview),
+    });
 
     // Handle messages from the webview
     webviewView.webview.onDidReceiveMessage(async (message) => {

@@ -1,10 +1,45 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./server";
-import { StreamingTextResponse, streamText } from "ai";
+import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createMistral } from "@ai-sdk/mistral";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { initTRPC } from "@trpc/server";
+import type * as vscode from "vscode";
+import { observable } from "@trpc/server/observable";
+
+export type Context = { vscode: typeof vscode };
+
+const t = initTRPC.context<Context>().create();
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+function streamToObservable<T>(stream: ReadableStream<T>) {
+  return observable<T>((emit) => {
+    const reader = stream.getReader();
+
+    function read() {
+      reader
+        .read()
+        .then(({ done, value }) => {
+          if (done) {
+            emit.complete();
+          } else {
+            emit.next(value);
+            read();
+          }
+        })
+        .catch((err) => emit.error(err));
+    }
+
+    read();
+
+    return () => {
+      reader.cancel();
+    };
+  });
+}
 
 const chatSchema = z.object({
   messages: z.array(
@@ -30,7 +65,7 @@ export const appRouter = router({
   openChatPanel: publicProcedure.mutation(async ({ ctx }) => {
     await ctx.vscode.commands.executeCommand("codewithcheese.openChatPanel");
   }),
-  chat: publicProcedure.input(chatSchema).query(async ({ input }) => {
+  chat: publicProcedure.input(chatSchema).subscription(async ({ input }) => {
     const { messages, providerId, apiKey, baseURL, modelName } = input;
 
     if (!providerId || !baseURL || !modelName) {
@@ -64,6 +99,8 @@ export const appRouter = router({
       // @ts-expect-error issue with tool message types
       messages,
     });
-    return new StreamingTextResponse(result.toAIStream());
+
+    const stream = result.toAIStream();
+    return streamToObservable(stream);
   }),
 });

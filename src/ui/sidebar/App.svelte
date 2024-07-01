@@ -2,9 +2,10 @@
   import "../app.css";
   import { Button } from "$ui/components/ui/button";
   import { HandIcon, MessageCircleIcon, PlusIcon } from "lucide-svelte";
-  import { trpc } from "../../trpc/client";
+  import { createTrpcClient } from "../../trpc/client";
   import { Label } from "$ui/components/ui/label";
   import { Input } from "$ui/components/ui/input";
+  const trpc = createTrpcClient();
 
   let apiKey = $state("");
 
@@ -20,14 +21,26 @@
 
   async function chat() {
     console.log("Sending chat");
-    const res = await trpc.chat.query({
-      messages: [{ role: "user", content: "Hello, how are you?" }],
-      providerId: "openai",
-      apiKey,
-      baseURL: "https://api.openai.com/v1",
-      modelName: "gpt-3.5-turbo",
-    });
-    console.log("chat", res);
+    trpc.chat.subscribe(
+      {
+        messages: [{ role: "user", content: "Hello, how are you?" }],
+        providerId: "openai",
+        apiKey,
+        baseURL: "https://api.openai.com/v1",
+        modelName: "gpt-3.5-turbo",
+      },
+      {
+        onData: (chunk) => {
+          console.log("Received chunk:", chunk);
+        },
+        onError: (err) => {
+          console.error("Subscription error:", err);
+        },
+        onComplete: () => {
+          console.log("Chat completed");
+        },
+      }
+    );
   }
 </script>
 

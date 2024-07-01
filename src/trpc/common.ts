@@ -1,6 +1,11 @@
 import type { WebSocketServer } from "ws";
 
-import { SOCKET_STATE } from "./shared.js";
+const SOCKET_STATE = {
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3,
+} as const;
 
 abstract class BaseSocketPonyFill {
   readonly readyState = SOCKET_STATE.OPEN;

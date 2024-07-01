@@ -1,11 +1,9 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { handlePostMessageRequest } from "./trpc/handler";
 import { initDb, runMigrations } from "./db";
 import type { SQLite3Database } from "./db/node-sqlite3/driver";
-import { applyWSSHandler } from "@trpc/server/adapters/ws";
 import { appRouter } from "./trpc/router";
-import { createVSCodeServer } from "./trpc/vscode";
+import { applyTRPCHandler } from "./trpc/server";
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("Codewithcheese");
@@ -78,10 +76,11 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-    applyWSSHandler({
+    // Set up the tRPC handler
+    applyTRPCHandler({
       router: appRouter,
-      createContext: () => ({ vscode }),
-      wss: createVSCodeServer(webviewView.webview),
+      createContext: async () => ({}), // Add your context creation logic here if needed
+      webview: webviewView.webview,
     });
 
     // Handle messages from the webview
@@ -90,9 +89,9 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         `Received message from webview: ${JSON.stringify(message)}`
       );
 
-      await handlePostMessageRequest(message, { vscode }, (response): void => {
-        webviewView.webview.postMessage(response);
-      });
+      // await handlePostMessageRequest(message, { vscode }, (response): void => {
+      //   webviewView.webview.postMessage(response);
+      // });
 
       // if (isTRPCRequestMessage(message)) {
       //

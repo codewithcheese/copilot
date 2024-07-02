@@ -1,9 +1,10 @@
 {
   "name": "copilot",
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "activationEvents": [],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [

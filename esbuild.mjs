@@ -72,6 +72,7 @@ async function buildExtension() {
     sourcesContent: false,
     platform: "node",
     outdir: "dist/",
+    outExtension: { ".js": ".cjs" },
     external: ["vscode", "@vscode/sqlite3"],
     logLevel: "silent",
     loader: { ".json": "json", ".sql": "text" },

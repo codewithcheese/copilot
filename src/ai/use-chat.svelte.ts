@@ -13,21 +13,23 @@ import {
   generateId as generateIdFunc,
   processChatStream,
 } from "@ai-sdk/ui-utils";
-import { useSWR } from "sswr";
-import {
-  type Readable,
-  type Writable,
-  derived,
-  get,
-  writable,
-} from "svelte/store";
+// import { useSWR } from "sswr";
+// import {
+//   type Readable,
+//   type Writable,
+//   derived,
+//   get,
+//   writable,
+// } from "svelte/store";
 export type { CreateMessage, Message, UseChatOptions };
 
 export type UseChatHelpers = {
   /** Current messages in the chat */
-  messages: Readable<Message[]>;
+  // messages: Readable<Message[]>;
+  messages: Message[];
   /** The error object of the API request */
-  error: Readable<undefined | Error>;
+  // error: Readable<undefined | Error>;
+  error: undefined | Error;
   /**
    * Append a user message to the chat list. This triggers the API call to fetch
    * the assistant's response.
@@ -57,7 +59,8 @@ export type UseChatHelpers = {
    */
   setMessages: (messages: Message[]) => void;
   /** The current value of the input */
-  input: Writable<string>;
+  // input: Writable<string>;
+  input: string;
   /** Form submission handler to automatically reset input and append a user message  */
   handleSubmit: (
     event?: { preventDefault?: () => void },
@@ -65,10 +68,12 @@ export type UseChatHelpers = {
   ) => void;
   metadata?: Object;
   /** Whether the API request is in progress */
-  isLoading: Readable<boolean | undefined>;
+  // isLoading: Readable<boolean | undefined>;
+  isLoading: boolean | undefined;
 
   /** Additional data added on the server via StreamData */
-  data: Readable<JSONValue[] | undefined>;
+  // data: Readable<JSONValue[] | undefined>;
+  data: JSONValue[] | undefined;
 };
 const getStreamedResponse = async (
   api: string,
@@ -187,29 +192,47 @@ export function useChat({
   const chatId = id || `chat-${uniqueId++}`;
 
   const key = `${api}|${chatId}`;
-  const {
-    data,
-    mutate: originalMutate,
-    isLoading: isSWRLoading,
-  } = useSWR<Message[]>(key, {
-    fetcher: () => store[key] || initialMessages,
-    fallbackData: initialMessages,
+
+  const state = $state<UseChatHelpers>({
+    messages: initialMessages,
+    input: initialInput,
+    data: [],
+    metadata: undefined,
+    isLoading: false,
+    error: undefined,
+    reload: async () => null,
+    stop: () => {},
+    setMessages: () => {},
+    append: async () => null,
+    handleSubmit: () => {},
   });
+  // const {
+  //   data,
+  //   mutate: originalMutate,
+  //   isLoading: isSWRLoading,
+  // } = useSWR<Message[]>(key, {
+  //   fetcher: () => store[key] || initialMessages,
+  //   fallbackData: initialMessages,
+  // });
 
-  const streamData = writable<JSONValue[] | undefined>(undefined);
+  // let data = $state(store[key] || initialMessages);
 
-  const loading = writable<boolean>(false);
+  // let streamData = $state<JSONValue[] | undefined>(undefined);
+
+  // let loading = $state<boolean>(false);
 
   // Force the `data` to be `initialMessages` if it's `undefined`.
-  data.set(initialMessages);
+  // data.set(initialMessages);
 
   const mutate = (data: Message[]) => {
     store[key] = data;
-    return originalMutate(data);
+    // return originalMutate(data);
+    state.messages = data;
+    return data;
   };
 
   // Because of the `fallbackData` option, the `data` will never be `undefined`.
-  const messages = data as Writable<Message[]>;
+  // const messages = data;
 
   // Abort controller to cancel the current API call.
   let abortController: AbortController | null = null;
@@ -220,14 +243,14 @@ export function useChat({
     body,
   };
 
-  const error = writable<undefined | Error>(undefined);
+  // let error = $state<undefined | Error>(undefined);
 
   // Actual mutation hook to send messages to the API endpoint and update the
   // chat state.
   async function triggerRequest(chatRequest: ChatRequest) {
     try {
-      error.set(undefined);
-      loading.set(true);
+      state.error = undefined;
+      state.isLoading = true;
       abortController = new AbortController();
 
       await processChatStream({
@@ -237,11 +260,11 @@ export function useChat({
             chatRequest,
             mutate,
             (data) => {
-              streamData.set(data);
+              state.data = data;
             },
-            get(streamData),
+            state.data,
             extraMetadata,
-            get(messages),
+            state.messages,
             abortController,
             generateId,
             streamMode,
@@ -255,7 +278,7 @@ export function useChat({
         updateChatRequest: (chatRequestParam) => {
           chatRequest = chatRequestParam;
         },
-        getCurrentMessages: () => get(messages),
+        getCurrentMessages: () => state.messages,
       });
 
       abortController = null;
@@ -272,13 +295,13 @@ export function useChat({
         onError(err);
       }
 
-      error.set(err as Error);
+      state.error = err as Error;
     } finally {
-      loading.set(false);
+      state.isLoading = false;
     }
   }
 
-  const append: UseChatHelpers["append"] = async (
+  state.append = async (
     message: Message | CreateMessage,
     {
       options,
@@ -294,7 +317,7 @@ export function useChat({
     }
 
     const chatRequest: ChatRequest = {
-      messages: get(messages).concat(message as Message),
+      messages: state.messages.concat(message as Message),
       options,
       data,
       ...(functions !== undefined && { functions }),
@@ -305,14 +328,14 @@ export function useChat({
     return triggerRequest(chatRequest);
   };
 
-  const reload: UseChatHelpers["reload"] = async ({
+  state.reload = async ({
     options,
     functions,
     function_call,
     tools,
     tool_choice,
   }: ChatRequestOptions = {}) => {
-    const messagesSnapshot = get(messages);
+    const messagesSnapshot = state.messages;
     if (messagesSnapshot.length === 0) return null;
 
     // Remove last assistant message and retry last user message.
@@ -341,28 +364,28 @@ export function useChat({
     return triggerRequest(chatRequest);
   };
 
-  const stop = () => {
+  state.stop = () => {
     if (abortController) {
       abortController.abort();
       abortController = null;
     }
   };
 
-  const setMessages = (messages: Message[]) => {
+  state.setMessages = (messages: Message[]) => {
     mutate(messages);
   };
 
-  const input = writable(initialInput);
+  // let input = $state(initialInput);
 
-  const handleSubmit = (
+  state.handleSubmit = (
     event?: { preventDefault?: () => void },
     options: ChatRequestOptions = {}
   ) => {
     event?.preventDefault?.();
-    const inputValue = get(input);
+    const inputValue = state.input;
     if (!inputValue) return;
 
-    append(
+    state.append(
       {
         content: inputValue,
         role: "user",
@@ -370,26 +393,15 @@ export function useChat({
       },
       options
     );
-    input.set("");
+    state.input = "";
   };
 
-  const isLoading = derived(
-    [isSWRLoading, loading],
-    ([$isSWRLoading, $loading]) => {
-      return $isSWRLoading || $loading;
-    }
-  );
+  // const isLoading = $derived(loading)
+  //   [isSWRLoading, loading],
+  //   ([$isSWRLoading, $loading]) => {
+  //     return $isSWRLoading || $loading;
+  //   }
+  // );
 
-  return {
-    messages,
-    error,
-    append,
-    reload,
-    stop,
-    setMessages,
-    input,
-    handleSubmit,
-    isLoading,
-    data: streamData,
-  };
+  return state;
 }

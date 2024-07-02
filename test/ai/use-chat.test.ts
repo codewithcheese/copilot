@@ -24,24 +24,16 @@ describe("useChat in Svelte component", () => {
       }
     );
 
-    console.log("Rendered");
-
     // Type a message in the input
     const input = getByPlaceholderText("Type a message...");
     await fireEvent.input(input, { target: { value: "Hi there!" } });
-
-    console.log("Typed");
 
     // Submit the form
     const submitButton = getByText("Send Message");
     await fireEvent.click(submitButton);
 
-    console.log("Submitted");
-
     // Wait for the loading state
     await findByText("Loading...");
-
-    console.log("Waiting for response");
 
     // Wait for the response to be rendered
     await waitFor(
